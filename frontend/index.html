@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Typeahead System</title>
+    <style>
+        :root {
+            --bg: #f4efe7;
+            --panel: rgba(255, 252, 247, 0.88);
+            --border: rgba(33, 31, 29, 0.12);
+            --ink: #211f1d;
+            --muted: #6d655d;
+            --accent: #c25b36;
+            --accent-soft: #ffe7dc;
+            --success: #1f7a57;
+            --shadow: 0 24px 80px rgba(41, 30, 19, 0.16);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(194, 91, 54, 0.18), transparent 35%),
+                radial-gradient(circle at top right, rgba(31, 122, 87, 0.14), transparent 30%),
+                linear-gradient(180deg, #f9f4ec 0%, #efe5d8 100%);
+        }
+
+        .shell {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 48px 20px 72px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 24px;
+            align-items: start;
+            margin-bottom: 28px;
+        }
+
+        .panel {
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .hero-copy {
+            padding: 32px;
+        }
+
+        .eyebrow {
+            display: inline-block;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 18px 0 14px;
+            font-size: clamp(2.4rem, 4vw, 4.25rem);
+            line-height: 0.95;
+            letter-spacing: -0.05em;
+        }
+
+        .lede {
+            margin: 0;
+            max-width: 62ch;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 1rem;
+        }
+
+        .hero-metrics {
+            padding: 26px 24px;
+        }
+
+        .hero-metrics h2,
+        .section-title {
+            margin: 0 0 18px;
+            font-size: 1rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+        }
+
+        .metric-card {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.66);
+            border: 1px solid rgba(33, 31, 29, 0.08);
+        }
+
+        .metric-card strong {
+            display: block;
+            font-size: 1.7rem;
+            margin-top: 8px;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 24px;
+        }
+
+        .search-panel,
+        .side-panel {
+            padding: 28px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        input,
+        button {
+            font: inherit;
+        }
+
+        #searchInput {
+            width: 100%;
+            border: 1px solid rgba(33, 31, 29, 0.15);
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 18px;
+            padding: 18px 20px;
+            font-size: 1.05rem;
+            outline: none;
+            transition: border-color 160ms ease, transform 160ms ease;
+        }
+
+        #searchInput:focus {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        #searchButton {
+            border: 0;
+            border-radius: 18px;
+            padding: 0 24px;
+            background: linear-gradient(135deg, #ce6b45, #b34422);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .suggestions {
+            position: absolute;
+            top: calc(100% + 12px);
+            left: 0;
+            right: 0;
+            background: rgba(255, 252, 247, 0.98);
+            border-radius: 22px;
+            border: 1px solid rgba(33, 31, 29, 0.12);
+            overflow: hidden;
+            box-shadow: 0 26px 50px rgba(29, 18, 8, 0.16);
+            display: none;
+            z-index: 20;
+        }
+
+        .suggestions.visible {
+            display: block;
+        }
+
+        .suggestion-item {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            text-align: left;
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            cursor: pointer;
+        }
+
+        .suggestion-item:hover,
+        .suggestion-item.active {
+            background: rgba(194, 91, 54, 0.08);
+        }
+
+        .suggestion-item small {
+            color: var(--muted);
+        }
+
+        .status-row {
+            margin-top: 18px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            border-radius: 999px;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            background: rgba(33, 31, 29, 0.06);
+            color: var(--muted);
+        }
+
+        .response {
+            margin-top: 24px;
+            padding: 18px 20px;
+            border-radius: 18px;
+            background: rgba(31, 122, 87, 0.08);
+            color: var(--success);
+            min-height: 58px;
+        }
+
+        .debug-card,
+        .trending-card {
+            padding: 22px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.64);
+            border: 1px solid rgba(33, 31, 29, 0.08);
+        }
+
+        .stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 10px;
+        }
+
+        .list li {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(244, 239, 231, 0.7);
+        }
+
+        .mono {
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.9rem;
+        }
+
+        .helper {
+            color: var(--muted);
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 900px) {
+            .hero,
+            .app-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .shell {
+                padding-top: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <section class="hero">
+        <div class="panel hero-copy">
+            <span class="eyebrow">Distributed Search Demo</span>
+            <h1>Typeahead that shows its systems work.</h1>
+            <p class="lede">
+                Suggestions are served through a three-node Redis ring with consistent hashing, backed by PostgreSQL,
+                recency-aware ranking, and batched write aggregation.
+            </p>
+        </div>
+        <div class="panel hero-metrics">
+            <h2>Live Metrics</h2>
+            <div class="metric-grid" id="metricGrid">
+                <div class="metric-card"><span>Cache hit rate</span><strong id="hitRate">0%</strong></div>
+                <div class="metric-card"><span>Suggestion requests</span><strong id="suggestCount">0</strong></div>
+                <div class="metric-card"><span>Batch writes</span><strong id="batchWrites">0</strong></div>
+                <div class="metric-card"><span>Rows flushed</span><strong id="flushedRows">0</strong></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="app-grid">
+        <div class="panel search-panel">
+            <h2 class="section-title">Search Playground</h2>
+            <div class="search-box">
+                <div class="search-input-row">
+                    <input id="searchInput" type="text" autocomplete="off" placeholder="Start typing a query like sea, serv, or java tutorial">
+                    <button id="searchButton" type="button">Search</button>
+                </div>
+                <div id="suggestions" class="suggestions" role="listbox" aria-label="Suggestions"></div>
+            </div>
+            <div class="status-row">
+                <span class="pill" id="requestState">Idle</span>
+                <span class="pill" id="cacheNode">Node: -</span>
+                <span class="pill" id="cacheHit">Cache: -</span>
+            </div>
+            <div class="response" id="searchResponse">Submit a search to see the dummy response and trigger buffered updates.</div>
+        </div>
+
+        <div class="stack">
+            <div class="panel side-panel">
+                <h2 class="section-title">Trending Searches</h2>
+                <div class="trending-card">
+                    <ul class="list" id="trendingList"></ul>
+                </div>
+            </div>
+
+            <div class="panel side-panel">
+                <h2 class="section-title">Cache Routing</h2>
+                <div class="debug-card">
+                    <p class="helper">The prefix currently in the search box is routed to one Redis node through the consistent hash ring.</p>
+                    <div class="mono" id="debugInfo">Type to inspect routing details.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const state = {
+        suggestions: [],
+        activeIndex: -1,
+        debounceId: null
+    };
+
+    const searchInput = document.getElementById("searchInput");
+    const searchButton = document.getElementById("searchButton");
+    const suggestionsBox = document.getElementById("suggestions");
+    const searchResponse = document.getElementById("searchResponse");
+    const requestState = document.getElementById("requestState");
+    const cacheNode = document.getElementById("cacheNode");
+    const cacheHit = document.getElementById("cacheHit");
+    const debugInfo = document.getElementById("debugInfo");
+
+    async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+            throw new Error(`Request failed: ${response.status}`);
+        }
+        return response.json();
+    }
+
+    function setStateLabel(text) {
+        requestState.textContent = text;
+    }
+
+    function closeSuggestions() {
+        suggestionsBox.classList.remove("visible");
+        suggestionsBox.innerHTML = "";
+        state.activeIndex = -1;
+    }
+
+    function renderSuggestions(items) {
+        state.suggestions = items;
+        if (!items.length) {
+            closeSuggestions();
+            return;
+        }
+
+        suggestionsBox.innerHTML = items.map((item, index) => `
+            <button class="suggestion-item" data-index="${index}" type="button" role="option">
+                <span>
+                    <strong>${item.term}</strong><br>
+                    <small>score ${item.score.toFixed(2)} · recent ${item.recentSearchCount}</small>
+                </span>
+                <small>${item.frequency.toLocaleString()}</small>
+            </button>
+        `).join("");
+
+        suggestionsBox.classList.add("visible");
+    }
+
+    async function refreshDebug(prefix) {
+        const data = await fetchJson(`/cache/debug?prefix=${encodeURIComponent(prefix)}`);
+        cacheNode.textContent = `Node: ${data.node}`;
+        cacheHit.textContent = `Cache: ${data.cacheHit ? "Hit" : "Miss"}`;
+        debugInfo.textContent = `${data.prefix || "(empty)"} -> ${data.node} (${data.host}:${data.port}) | key ${data.cacheKey}`;
+    }
+
+    async function refreshMetrics() {
+        try {
+            const data = await fetchJson("/metrics/summary");
+            document.getElementById("hitRate").textContent = `${data.cacheHitRate.toFixed(1)}%`;
+            document.getElementById("suggestCount").textContent = data.totalSuggestionRequests.toLocaleString();
+            document.getElementById("batchWrites").textContent = data.dbBatchWriteCount.toLocaleString();
+            document.getElementById("flushedRows").textContent = data.flushedRows.toLocaleString();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function refreshTrending() {
+        try {
+            const items = await fetchJson("/trending");
+            const list = document.getElementById("trendingList");
+            list.innerHTML = items.map((item, index) => `
+                <li>
+                    <span>${index + 1}. ${item.term}</span>
+                    <span>${item.frequency.toLocaleString()}</span>
+                </li>
+            `).join("");
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async function requestSuggestions(prefix) {
+        if (!prefix.trim()) {
+            setStateLabel("Idle");
+            closeSuggestions();
+            cacheNode.textContent = "Node: -";
+            cacheHit.textContent = "Cache: -";
+            debugInfo.textContent = "Type to inspect routing details.";
+            return;
+        }
+
+        setStateLabel("Loading suggestions...");
+
+        try {
+            const [suggestions] = await Promise.all([
+                fetchJson(`/suggest?q=${encodeURIComponent(prefix)}`),
+                refreshDebug(prefix)
+            ]);
+            renderSuggestions(suggestions);
+            setStateLabel(suggestions.length ? "Suggestions ready" : "No matches");
+            await refreshMetrics();
+        } catch (error) {
+            console.error(error);
+            setStateLabel("Suggestion error");
+        }
+    }
+
+    function chooseSuggestion(index) {
+        const item = state.suggestions[index];
+        if (!item) {
+            return;
+        }
+        searchInput.value = item.term;
+        closeSuggestions();
+    }
+
+    async function submitSearch(term) {
+        const normalized = term.trim();
+        if (!normalized) {
+            return;
+        }
+
+        setStateLabel("Submitting search...");
+
+        try {
+            const data = await fetchJson("/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ term: normalized })
+            });
+
+            searchResponse.textContent = `${data.message}: ${data.term}`;
+            setStateLabel("Search recorded");
+            await Promise.all([
+                refreshTrending(),
+                refreshMetrics(),
+                refreshDebug(normalized.slice(0, 2))
+            ]);
+        } catch (error) {
+            console.error(error);
+            searchResponse.textContent = "Search request failed.";
+            setStateLabel("Search error");
+        }
+    }
+
+    searchInput.addEventListener("input", (event) => {
+        const prefix = event.target.value;
+        clearTimeout(state.debounceId);
+        state.debounceId = setTimeout(() => requestSuggestions(prefix), 220);
+    });
+
+    searchInput.addEventListener("keydown", (event) => {
+        if (!state.suggestions.length) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                submitSearch(searchInput.value);
+            }
+            return;
+        }
+
+        if (event.key === "ArrowDown") {
+            event.preventDefault();
+            state.activeIndex = (state.activeIndex + 1) % state.suggestions.length;
+        } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            state.activeIndex = (state.activeIndex - 1 + state.suggestions.length) % state.suggestions.length;
+        } else if (event.key === "Enter") {
+            event.preventDefault();
+            if (state.activeIndex >= 0) {
+                chooseSuggestion(state.activeIndex);
+            }
+            submitSearch(searchInput.value);
+        } else if (event.key === "Escape") {
+            closeSuggestions();
+        }
+
+        [...suggestionsBox.children].forEach((item, index) => {
+            item.classList.toggle("active", index === state.activeIndex);
+        });
+    });
+
+    suggestionsBox.addEventListener("click", (event) => {
+        const button = event.target.closest(".suggestion-item");
+        if (!button) {
+            return;
+        }
+        chooseSuggestion(Number(button.dataset.index));
+        submitSearch(searchInput.value);
+    });
+
+    searchButton.addEventListener("click", () => submitSearch(searchInput.value));
+
+    document.addEventListener("click", (event) => {
+        if (!event.target.closest(".search-box")) {
+            closeSuggestions();
+        }
+    });
+
+    refreshTrending();
+    refreshMetrics();
+    setInterval(refreshTrending, 15000);
+    setInterval(refreshMetrics, 10000);
+</script>
+</body>
+</html>

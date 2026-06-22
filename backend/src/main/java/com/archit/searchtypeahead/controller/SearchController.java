@@ -1,26 +1,28 @@
 package com.archit.searchtypeahead.controller;
 
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.archit.searchtypeahead.entity.SearchQuery;
-import com.archit.searchtypeahead.service.SearchQueryService;
+import com.archit.searchtypeahead.dto.SearchRequest;
+import com.archit.searchtypeahead.dto.SearchResponse;
+import com.archit.searchtypeahead.service.SearchService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/search")
+@Validated
 @RequiredArgsConstructor
 public class SearchController {
 
-    private final SearchQueryService service;
+    private final SearchService searchService;
 
-    @PostMapping
-    public SearchQuery save(
-            @RequestParam String query
+    @PostMapping("/search")
+    public SearchResponse search(
+            @Valid @RequestBody SearchRequest request
     ) {
-        return service.save(query);
+        return searchService.recordSearch(request.term());
     }
 }
